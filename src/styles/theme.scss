@@ -1,0 +1,69 @@
+// ============================================
+// 中式黑八台球 - 主题配色变量
+// ============================================
+
+// 品牌主题色：台球桌绿色
+$color-primary: #1A6B3A;
+$color-primary-light: #2D8B4F;
+$color-primary-dark: #0F4A26;
+
+// 辅助色：金色（高端台球俱乐部风格）
+$color-secondary: #D4AF37;
+$color-secondary-light: #F0D78C;
+$color-secondary-dark: #B8941F;
+
+// 功能色
+$color-success: #00B42A;
+$color-warning: #FF7D00;
+$color-error: #F53F3F;
+$color-info: #165DFF;
+
+// 背景色（深色主题）
+$color-bg-page: #121212;
+$color-bg-card: #1E1E1E;
+$color-bg-hover: #2A2A2A;
+$color-bg-overlay: rgba(0, 0, 0, 0.75);
+
+// 台球桌布绿色渐变
+$color-table-felt-start: #1A6B3A;
+$color-table-felt-end: #0F4A26;
+$color-table-wood: #8B4513;
+
+// 文本色
+$color-text-primary: #FFFFFF;
+$color-text-secondary: #B0B0B0;
+$color-text-tertiary: #808080;
+$color-text-disabled: #4D4D4D;
+$color-text-white: #FFFFFF;
+
+// 边框色
+$color-border: #333333;
+$color-divider: #2A2A2A;
+
+// 球组颜色
+$color-ball-cue: #FFFFFF;
+$color-ball-black: #000000;
+$color-ball-solid: [
+  '#FFD700', // 1号 黄
+  '#0000FF', // 2号 蓝
+  '#FF0000', // 3号 红
+  '#800080', // 4号 紫
+  '#FF8C00', // 5号 橙
+  '#006400', // 6号 绿
+  '#8B0000'  // 7号 酱红
+];
+$color-ball-striped: [
+  '#FFD700', // 9号 黄条
+  '#0000FF', // 10号 蓝条
+  '#FF0000', // 11号 红条
+  '#800080', // 12号 紫条
+  '#FF8C00', // 13号 橙条
+  '#006400', // 14号 绿条
+  '#8B0000'  // 15号 酱红条
+];
+
+// 按钮渐变色
+$color-btn-primary-start: #2D8B4F;
+$color-btn-primary-end: #1A6B3A;
+$color-btn-secondary-start: #D4AF37;
+$color-btn-secondary-end: #B8941F;

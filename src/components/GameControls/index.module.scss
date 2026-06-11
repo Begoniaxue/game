@@ -1,0 +1,57 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  padding: $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  margin-top: $spacing-md;
+}
+
+.buttonRow {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-md;
+}
+
+.actionBtn {
+  flex: 1;
+  height: $button-height-lg;
+
+  &.shootBtn {
+    background: linear-gradient(135deg, $color-secondary-light 0%, $color-secondary 100%);
+    color: $color-text-white;
+    font-weight: $font-weight-semibold;
+    font-size: $font-size-lg;
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  &.secondaryBtn {
+    background: $color-bg-hover;
+    color: $color-text-secondary;
+
+    &:active {
+      background: $color-border;
+    }
+  }
+
+  &.dangerBtn {
+    background: rgba(245, 63, 63, 0.15);
+    color: $color-error;
+
+    &:active {
+      background: rgba(245, 63, 63, 0.25);
+    }
+  }
+}
+
+.btnIcon {
+  margin-right: $spacing-xs;
+  font-size: $font-size-md;
+}
+
+.powerSection {
+  margin-bottom: $spacing-md;
+}

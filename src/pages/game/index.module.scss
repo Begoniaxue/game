@@ -1,0 +1,41 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: $page-padding;
+  padding-bottom: $page-padding;
+  background: $color-bg-page;
+  display: flex;
+  flex-direction: column;
+}
+
+.gameContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.exitConfirm {
+  .content {
+    text-align: center;
+    padding: $spacing-md 0;
+
+    .icon {
+      font-size: 80rpx;
+      margin-bottom: $spacing-md;
+    }
+
+    .text {
+      font-size: $font-size-md;
+      color: $color-text-primary;
+      line-height: 1.6;
+    }
+
+    .warning {
+      font-size: $font-size-sm;
+      color: $color-error;
+      margin-top: $spacing-sm;
+    }
+  }
+}

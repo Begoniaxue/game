@@ -1,0 +1,182 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: $page-padding;
+  padding-bottom: calc(120rpx + #{$page-padding});
+  background: $color-bg-page;
+}
+
+.header {
+  margin-bottom: $spacing-lg;
+}
+
+.title {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.statsRow {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.statCard {
+  flex: 1;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  text-align: center;
+
+  .statValue {
+    font-size: 36rpx;
+    font-weight: $font-weight-bold;
+    color: $color-secondary;
+    margin-bottom: $spacing-xs;
+  }
+
+  .statLabel {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+  }
+
+  &.win .statValue {
+    color: $color-success;
+  }
+
+  &.lose .statValue {
+    color: $color-error;
+  }
+}
+
+.filterBar {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+  overflow-x: auto;
+  padding-bottom: $spacing-sm;
+
+  @include scroll-x-container;
+}
+
+.filterBtn {
+  @include scroll-x-item(auto);
+  display: inline-flex;
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-round;
+  border: none;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  white-space: nowrap;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-secondary-light 0%, $color-secondary 100%);
+    color: $color-text-white;
+  }
+}
+
+.recordsList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.recordCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  box-shadow: $shadow-card;
+
+  .cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-sm;
+  }
+
+  .resultBadge {
+    padding: $spacing-xs $spacing-md;
+    border-radius: $radius-round;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+
+    &.win {
+      background: rgba(0, 180, 42, 0.15);
+      color: $color-success;
+    }
+
+    &.lose {
+      background: rgba(245, 63, 63, 0.15);
+      color: $color-error;
+    }
+  }
+
+  .dateText {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+  }
+
+  .cardBody {
+    display: flex;
+    justify-content: space-between;
+    padding-top: $spacing-sm;
+    border-top: 1rpx solid $color-divider;
+  }
+
+  .infoItem {
+    text-align: center;
+
+    .infoValue {
+      font-size: $font-size-md;
+      font-weight: $font-weight-semibold;
+      color: $color-text-primary;
+    }
+
+    .infoLabel {
+      font-size: $font-size-xs;
+      color: $color-text-tertiary;
+      margin-top: 2rpx;
+    }
+  }
+
+  .difficultyTag {
+    display: inline-block;
+    padding: 2rpx $spacing-sm;
+    background: rgba(212, 175, 55, 0.15);
+    color: $color-secondary;
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    margin-top: $spacing-sm;
+  }
+
+  .reasonText {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    margin-top: $spacing-sm;
+  }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl * 2;
+  text-align: center;
+
+  .emptyIcon {
+    font-size: 120rpx;
+    margin-bottom: $spacing-md;
+    opacity: 0.3;
+  }
+
+  .emptyText {
+    font-size: $font-size-md;
+    color: $color-text-tertiary;
+    margin-bottom: $spacing-lg;
+  }
+}
