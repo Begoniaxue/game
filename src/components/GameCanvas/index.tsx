@@ -40,34 +40,82 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const placementPosRef = useRef<{ x: number; y: number } | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const initedRef = useRef(false);
+  const canvasSizeRef = useRef({ width: 750, height: 400 });
 
   const getCanvasSize = useCallback(() => {
     const info = Taro.getSystemInfoSync();
     const aspectRatio = TABLE_WIDTH / TABLE_HEIGHT;
     const width = info.windowWidth - 64;
     const height = width / aspectRatio;
-    return { width, height: Math.min(height, info.windowHeight * 0.5) };
+    const size = { width, height: Math.min(height, info.windowHeight * 0.5) };
+    canvasSizeRef.current = size;
+    return size;
+  }, []);
+
+  const initRenderer = useCallback((canvas: HTMLCanvasElement, size: { width: number; height: number }) => {
+    if (initedRef.current) return;
+    if (!canvas || typeof canvas.getContext !== 'function') return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    initedRef.current = true;
+
+    const dpr = Taro.getSystemInfoSync().pixelRatio || 1;
+    canvas.width = size.width * dpr;
+    canvas.height = size.height * dpr;
+    ctx.scale(dpr, dpr);
+    rendererRef.current = new GameRenderer(ctx, size.width, size.height);
   }, []);
 
   useEffect(() => {
     const size = getCanvasSize();
     setCanvasSize(size);
 
-    const query = Taro.createSelectorQuery();
-    query.select('#gameCanvas')
-      .fields({ node: true, size: true })
-      .exec((res) => {
-        if (res[0]) {
-          const canvas = res[0].node as HTMLCanvasElement;
-          const ctx = canvas.getContext('2d')!;
-          const dpr = Taro.getSystemInfoSync().pixelRatio;
-          canvas.width = size.width * dpr;
-          canvas.height = size.height * dpr;
-          ctx.scale(dpr, dpr);
-          rendererRef.current = new GameRenderer(ctx, size.width, size.height);
+    setTimeout(() => {
+      let realCanvas: HTMLCanvasElement | null = null;
+
+      try {
+        if (typeof document !== 'undefined') {
+          const wrapperEl = document.getElementById('gameCanvas');
+          if (wrapperEl) {
+            const innerCanvas = wrapperEl.querySelector('canvas');
+            if (innerCanvas) {
+              realCanvas = innerCanvas;
+            }
+          }
+
+          if (!realCanvas && canvasRef.current) {
+            const refEl = canvasRef.current as any;
+            if (refEl instanceof HTMLCanvasElement) {
+              realCanvas = refEl;
+            } else if (refEl && refEl.querySelector) {
+              const inner = refEl.querySelector('canvas');
+              if (inner) realCanvas = inner;
+            }
+          }
         }
-      });
-  }, [getCanvasSize]);
+      } catch (e) {}
+
+      if (realCanvas) {
+        initRenderer(realCanvas, size);
+        return;
+      }
+
+      const query = Taro.createSelectorQuery();
+      query.select('#gameCanvas')
+        .fields({ node: true, size: true })
+        .exec((res) => {
+          if (res && res[0]) {
+            const canvasNode = res[0].node;
+            if (canvasNode && typeof canvasNode.getContext === 'function') {
+              initRenderer(canvasNode as HTMLCanvasElement, size);
+            }
+          }
+        });
+    }, 200);
+  }, [getCanvasSize, initRenderer]);
 
   useEffect(() => {
     if (rendererRef.current) {
@@ -76,7 +124,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   }, [canvasSize]);
 
   const render = useCallback(() => {
-    if (!rendererRef.current) return;
+    if (!rendererRef.current) {
+      try {
+        if (typeof document !== 'undefined') {
+          const wrapperEl = document.getElementById('gameCanvas');
+          if (wrapperEl) {
+            const innerCanvas = wrapperEl.querySelector('canvas') as HTMLCanvasElement | null;
+            if (innerCanvas && typeof innerCanvas.getContext === 'function') {
+              initRenderer(innerCanvas, canvasSizeRef.current);
+            }
+          }
+        }
+      } catch (e) {}
+      animFrameRef.current = requestAnimationFrame(render);
+      return;
+    }
 
     const renderer = rendererRef.current;
     renderer.clear();
@@ -124,14 +186,33 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const getEventPos = (e: any) => {
     const touches = e.touches || [e];
     const touch = touches[0];
-    const rect = (e.currentTarget as HTMLElement)?.getBoundingClientRect?.();
-    if (rect) {
+
+    if (touch && (touch.clientX !== undefined)) {
+      let offsetLeft = 0;
+      let offsetTop = 0;
+
+      try {
+        if (typeof document !== 'undefined') {
+          const wrapperEl = document.getElementById('gameCanvas');
+          if (wrapperEl) {
+            const rect = wrapperEl.getBoundingClientRect();
+            offsetLeft = rect.left;
+            offsetTop = rect.top;
+          }
+        }
+      } catch (ex) {}
+
       return {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
+        x: touch.clientX - offsetLeft,
+        y: touch.clientY - offsetTop,
       };
     }
-    return { x: touch.clientX, y: touch.clientY };
+
+    if (e.detail && e.detail.x !== undefined) {
+      return { x: e.detail.x, y: e.detail.y };
+    }
+
+    return { x: 0, y: 0 };
   };
 
   const handleTouchStart = (e: any) => {
