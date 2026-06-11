@@ -41,7 +41,7 @@ const initialState: GameState = {
   balls: [],
   pocketedBalls: [],
   aimAngle: 0,
-  power: 10,
+  power: 30,
   gameStartTime: 0,
   gameEndTime: 0,
   winReason: null,
@@ -69,7 +69,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setAimAngle: (angle) => set({ aimAngle: angle }),
 
-  setPower: (power) => set({ power: Math.max(2, Math.min(20, power)) }),
+  setPower: (power) => set({ power: Math.max(0, Math.min(100, power)) }),
 
   setCurrentPlayer: (player) => set({ currentPlayer: player }),
 

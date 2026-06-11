@@ -29,7 +29,14 @@ const PowerSlider: React.FC<PowerSliderProps> = ({
         min={min}
         max={max}
         value={value}
-        onChange={(e) => onChange(e.detail.value)}
+        onChange={(e) => {
+          const detail = e.detail as { value: number };
+          onChange(detail.value);
+        }}
+        onChanging={(e) => {
+          const detail = e.detail as { value: number };
+          onChange(detail.value);
+        }}
         disabled={disabled}
         activeColor="#D4AF37"
         backgroundColor="#2A2A2A"

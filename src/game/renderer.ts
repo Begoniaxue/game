@@ -283,19 +283,19 @@ export class GameRenderer {
 
     if (!canShoot) return;
 
-    const powerRatio = power / 20;
+    const powerRatio = power / 100;
     const cueLength = (100 + powerRatio * 150) * this.scale;
     const cueWidth = 6 * this.scale;
     const tipWidth = 3 * this.scale;
     const offsetFromBall = (ballRadius + 10) * this.scale;
 
-    const startX = cuePos.x + Math.cos(angle) * offsetFromBall;
-    const startY = cuePos.y + Math.sin(angle) * offsetFromBall;
-    const endX = startX + Math.cos(angle) * cueLength;
-    const endY = startY + Math.sin(angle) * cueLength;
+    const startX = cuePos.x + Math.cos(angle + Math.PI) * offsetFromBall;
+    const startY = cuePos.y + Math.sin(angle + Math.PI) * offsetFromBall;
+    const endX = startX + Math.cos(angle + Math.PI) * cueLength;
+    const endY = startY + Math.sin(angle + Math.PI) * cueLength;
 
-    const perpX = -Math.sin(angle);
-    const perpY = Math.cos(angle);
+    const perpX = -Math.sin(angle + Math.PI);
+    const perpY = Math.cos(angle + Math.PI);
 
     ctx.save();
 
