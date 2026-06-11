@@ -9,12 +9,15 @@ import styles from './index.module.scss';
 
 interface GameCanvasProps {
   balls: Ball[];
+  liveBallsRef: React.MutableRefObject<Ball[]>;
   aimAngle: number;
   power: number;
   canShoot: boolean;
   showGuide: boolean;
   isPlacing: boolean;
   isAIThinking: boolean;
+  phase: string;
+  shootProgressRef: React.MutableRefObject<number>;
   onAimChange: (angle: number) => void;
   onPowerChange: (power: number) => void;
   onPlaceChange: (x: number, y: number, valid: boolean) => void;
@@ -23,12 +26,15 @@ interface GameCanvasProps {
 
 const GameCanvas: React.FC<GameCanvasProps> = ({
   balls,
+  liveBallsRef,
   aimAngle,
   power,
   canShoot,
   showGuide,
   isPlacing,
   isAIThinking,
+  phase,
+  shootProgressRef,
   onAimChange,
   onPowerChange,
   onPlaceChange,
@@ -144,9 +150,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     renderer.clear();
     renderer.drawTable();
     renderer.drawPockets();
-    renderer.drawBalls(balls);
 
-    const cueBall = balls.find(b => b.id === 0 && !b.pocketed);
+    const drawBalls = liveBallsRef.current && liveBallsRef.current.length > 0
+      ? liveBallsRef.current
+      : balls;
+    renderer.drawBalls(drawBalls);
+
+    const cueBall = (liveBallsRef.current && liveBallsRef.current.length > 0
+      ? liveBallsRef.current
+      : balls
+    ).find(b => b.id === 0 && !b.pocketed);
+
     if (cueBall && !isAIThinking) {
       if (isPlacing && placementPosRef.current) {
         const valid = GameRules.isValidCueBallPosition(
@@ -160,19 +174,25 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           valid
         );
       } else if (!isPlacing) {
-        renderer.drawCue(
-          cueBall.x,
-          cueBall.y,
-          aimAngle,
-          power,
-          canShoot,
-          showGuide
-        );
+        const inShootingAnim = phase === 'shooting';
+        const canDrawCue = canShoot || inShootingAnim;
+        if (canDrawCue) {
+          const shootProgress = inShootingAnim ? (shootProgressRef.current || 0) : 0;
+          renderer.drawCue(
+            cueBall.x,
+            cueBall.y,
+            aimAngle,
+            power,
+            canShoot,
+            showGuide,
+            shootProgress
+          );
+        }
       }
     }
 
     animFrameRef.current = requestAnimationFrame(render);
-  }, [balls, aimAngle, power, canShoot, showGuide, isPlacing, isAIThinking]);
+  }, [balls, liveBallsRef, aimAngle, power, canShoot, showGuide, isPlacing, isAIThinking, phase, shootProgressRef]);
 
   useEffect(() => {
     animFrameRef.current = requestAnimationFrame(render);

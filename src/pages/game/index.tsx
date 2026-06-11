@@ -20,6 +20,9 @@ const GamePage: React.FC = () => {
   const aiPlayerRef = useRef<AIPlayer | null>(null);
   const gameLoopRef = useRef<number | null>(null);
   const placementPosRef = useRef<{ x: number; y: number; valid: boolean } | null>(null);
+  const liveBallsRef = useRef<Ball[]>([]);
+  const shootProgressRef = useRef(0);
+  const shootAnimStartRef = useRef(0);
   const [isPlacing, setIsPlacing] = useState(false);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -86,6 +89,7 @@ const GamePage: React.FC = () => {
     
     setTimeout(() => {
       const storeBalls = useGameStore.getState().balls;
+      liveBallsRef.current = storeBalls.map(b => ({ ...b }));
       physicsEngineRef.current = new PhysicsEngine();
       physicsEngineRef.current.initBalls(storeBalls);
       aiPlayerRef.current = new AIPlayer(useGameStore.getState().difficulty);
@@ -104,6 +108,8 @@ const GamePage: React.FC = () => {
   const startGameLoop = useCallback(() => {
     if (gameLoopRef.current) return;
 
+    const SHOOT_ANIM_DURATION = 120;
+
     const loop = () => {
       if (!physicsEngineRef.current) {
         gameLoopRef.current = requestAnimationFrame(loop);
@@ -113,26 +119,42 @@ const GamePage: React.FC = () => {
       const latestState = useGameStore.getState();
       const currentPhase = latestState.phase;
 
-      if (currentPhase === 'moving') {
+      if (currentPhase === 'shooting') {
+        const now = performance.now();
+        const elapsed = now - shootAnimStartRef.current;
+        const progress = Math.min(1, elapsed / SHOOT_ANIM_DURATION);
+        shootProgressRef.current = progress;
+
+        if (progress >= 1) {
+          const pending = (window as any).__pendingShoot;
+          if (pending && physicsEngineRef.current) {
+            physicsEngineRef.current.shoot(pending.angle, pending.power);
+            (window as any).__pendingShoot = null;
+          }
+          useGameStore.getState().setPhase('moving');
+        }
+      } else if (currentPhase === 'moving') {
+        shootProgressRef.current = 1;
         physicsEngineRef.current.step();
 
-        const { pocketed, offTable } = physicsEngineRef.current.updateBallPositions(latestState.balls);
-        
+        const liveBalls = liveBallsRef.current;
+        const { pocketed, offTable } = physicsEngineRef.current.updateBallPositions(liveBalls);
+
         for (const id of pocketed) {
-          const ball = useGameStore.getState().markBallPocketed(id);
-          if (ball) {
-            pocketedThisShotRef.current.push(ball);
+          const idx = liveBalls.findIndex(b => b.id === id);
+          if (idx !== -1) {
+            liveBalls[idx].pocketed = true;
+            pocketedThisShotRef.current.push({ ...liveBalls[idx] });
           }
         }
 
         for (const id of offTable) {
-          const ball = latestState.balls.find(b => b.id === id);
-          if (ball) {
-            pocketedThisShotRef.current.push({ ...ball, pocketed: true });
+          const idx = liveBalls.findIndex(b => b.id === id);
+          if (idx !== -1) {
+            liveBalls[idx].pocketed = true;
+            pocketedThisShotRef.current.push({ ...liveBalls[idx] });
           }
         }
-
-        useGameStore.getState().updateBalls([...useGameStore.getState().balls]);
 
         if (physicsEngineRef.current.isAllBallsResting()) {
           handleShotComplete();
@@ -160,12 +182,11 @@ const GamePage: React.FC = () => {
     gameState.setLastFoul('none');
 
     const physicalPower = MIN_POWER + (power / 100) * (MAX_POWER - MIN_POWER);
-    physicsEngineRef.current.shoot(aimAngle, physicalPower);
-    pocketedThisShotRef.current = [];
+    (window as any).__pendingShoot = { angle: aimAngle, power: physicalPower };
 
-    setTimeout(() => {
-      gameState.setPhase('moving');
-    }, 100);
+    shootAnimStartRef.current = performance.now();
+    shootProgressRef.current = 0;
+    pocketedThisShotRef.current = [];
   };
 
   const handleAIMove = useCallback(() => {
@@ -216,11 +237,14 @@ const GamePage: React.FC = () => {
     gameState.setAimAngle(shot.angle);
     pocketedThisShotRef.current = [];
 
+    const aiDelay = 300 + Math.random() * 400;
     setTimeout(() => {
-      physicsEngineRef.current!.shoot(shot.angle, shot.power);
-      gameState.setPhase('moving');
+      shootAnimStartRef.current = performance.now();
+      shootProgressRef.current = 0;
+      (window as any).__pendingShoot = { angle: shot.angle, power: shot.power };
+      gameState.setPhase('shooting');
       setIsAIThinking(false);
-    }, 800);
+    }, aiDelay);
   }, [gameState]);
 
   const handleAITurn = useCallback(() => {
@@ -236,6 +260,18 @@ const GamePage: React.FC = () => {
   const handleShotComplete = () => {
     const engine = physicsEngineRef.current;
     if (!engine) return;
+
+    const state = useGameStore.getState();
+    const liveBalls = liveBallsRef.current;
+    for (const b of liveBalls) {
+      const storeBall = state.balls.find(sb => sb.id === b.id);
+      if (storeBall) {
+        storeBall.x = b.x;
+        storeBall.y = b.y;
+        storeBall.pocketed = b.pocketed;
+      }
+    }
+    useGameStore.getState().updateBalls([...state.balls]);
 
     const collisionState = engine.getCollisionState();
     const pocketedThisShot = pocketedThisShotRef.current;
@@ -350,6 +386,12 @@ const GamePage: React.FC = () => {
                 cueBall.x = newX;
                 cueBall.y = newY;
                 cueBall.pocketed = false;
+                const liveCue = liveBallsRef.current.find(b => b.id === 0);
+                if (liveCue) {
+                  liveCue.x = newX;
+                  liveCue.y = newY;
+                  liveCue.pocketed = false;
+                }
                 gameState.updateBalls([...gameState.balls]);
                 gameState.setBallInHand(false);
               }
@@ -377,6 +419,13 @@ const GamePage: React.FC = () => {
     cueBall.x = newX;
     cueBall.y = newY;
 
+    const liveCue = liveBallsRef.current.find(b => b.id === 0);
+    if (liveCue) {
+      liveCue.x = newX;
+      liveCue.y = newY;
+      liveCue.pocketed = false;
+    }
+
     if (physicsEngineRef.current) {
       physicsEngineRef.current.setCueBallPosition(newX, newY);
     }
@@ -400,6 +449,12 @@ const GamePage: React.FC = () => {
       cueBall.x = x;
       cueBall.y = y;
       physicsEngineRef.current.setCueBallPosition(x, y);
+      const liveCue = liveBallsRef.current.find(b => b.id === 0);
+      if (liveCue) {
+        liveCue.x = x;
+        liveCue.y = y;
+        liveCue.pocketed = false;
+      }
       gameState.updateBalls([...gameState.balls]);
     }
 
@@ -481,12 +536,15 @@ const GamePage: React.FC = () => {
       <View className={styles.gameContent}>
         <GameCanvas
           balls={balls}
+          liveBallsRef={liveBallsRef}
           aimAngle={aimAngle}
           power={power}
           canShoot={canShoot && currentPlayer === 'player'}
           showGuide={appSettings.showAimGuide}
           isPlacing={isPlacing}
           isAIThinking={isAIThinking}
+          phase={phase}
+          shootProgressRef={shootProgressRef}
           onAimChange={handleAimChange}
           onPowerChange={handlePowerChange}
           onPlaceChange={handlePlaceChange}

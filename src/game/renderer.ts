@@ -259,7 +259,8 @@ export class GameRenderer {
     angle: number,
     power: number,
     canShoot: boolean,
-    showGuide: boolean
+    showGuide: boolean,
+    shootProgress: number = 0
   ) {
     const ctx = this.ctx;
     const cuePos = this.worldToScreen(cueBallX, cueBallY);
@@ -281,13 +282,17 @@ export class GameRenderer {
       ctx.restore();
     }
 
-    if (!canShoot) return;
+    if (!canShoot && shootProgress <= 0) return;
 
     const powerRatio = power / 100;
     const cueLength = (100 + powerRatio * 150) * this.scale;
     const cueWidth = 6 * this.scale;
     const tipWidth = 3 * this.scale;
-    const offsetFromBall = (ballRadius + 10) * this.scale;
+
+    const baseOffset = (ballRadius + 10) * this.scale;
+    const pullBackOffset = canShoot ? powerRatio * (30 * this.scale) : 0;
+    const pushForward = shootProgress * ((baseOffset + pullBackOffset + cueLength) * 0.4);
+    const offsetFromBall = baseOffset + pullBackOffset - pushForward;
 
     const startX = cuePos.x + Math.cos(angle + Math.PI) * offsetFromBall;
     const startY = cuePos.y + Math.sin(angle + Math.PI) * offsetFromBall;
