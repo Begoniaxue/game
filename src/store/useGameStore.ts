@@ -41,7 +41,7 @@ const initialState: GameState = {
   balls: [],
   pocketedBalls: [],
   aimAngle: 0,
-  power: 30,
+  power: 60,
   gameStartTime: 0,
   gameEndTime: 0,
   winReason: null,

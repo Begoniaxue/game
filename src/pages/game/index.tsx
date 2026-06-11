@@ -85,9 +85,10 @@ const GamePage: React.FC = () => {
     gameState.initGame();
     
     setTimeout(() => {
+      const storeBalls = useGameStore.getState().balls;
       physicsEngineRef.current = new PhysicsEngine();
-      physicsEngineRef.current.initBalls(gameState.balls);
-      aiPlayerRef.current = new AIPlayer(gameState.difficulty);
+      physicsEngineRef.current.initBalls(storeBalls);
+      aiPlayerRef.current = new AIPlayer(useGameStore.getState().difficulty);
       startGameLoop();
     }, 100);
   };
@@ -104,28 +105,34 @@ const GamePage: React.FC = () => {
     if (gameLoopRef.current) return;
 
     const loop = () => {
-      if (!physicsEngineRef.current) return;
+      if (!physicsEngineRef.current) {
+        gameLoopRef.current = requestAnimationFrame(loop);
+        return;
+      }
 
-      if (phase === 'moving') {
+      const latestState = useGameStore.getState();
+      const currentPhase = latestState.phase;
+
+      if (currentPhase === 'moving') {
         physicsEngineRef.current.step();
 
-        const { pocketed, offTable } = physicsEngineRef.current.updateBallPositions(gameState.balls);
+        const { pocketed, offTable } = physicsEngineRef.current.updateBallPositions(latestState.balls);
         
         for (const id of pocketed) {
-          const ball = gameState.markBallPocketed(id);
+          const ball = useGameStore.getState().markBallPocketed(id);
           if (ball) {
             pocketedThisShotRef.current.push(ball);
           }
         }
 
         for (const id of offTable) {
-          const ball = gameState.balls.find(b => b.id === id);
+          const ball = latestState.balls.find(b => b.id === id);
           if (ball) {
             pocketedThisShotRef.current.push({ ...ball, pocketed: true });
           }
         }
 
-        gameState.updateBalls([...gameState.balls]);
+        useGameStore.getState().updateBalls([...useGameStore.getState().balls]);
 
         if (physicsEngineRef.current.isAllBallsResting()) {
           handleShotComplete();
@@ -136,7 +143,7 @@ const GamePage: React.FC = () => {
     };
 
     gameLoopRef.current = requestAnimationFrame(loop);
-  }, [phase, gameState.balls]);
+  }, []);
 
   const stopGameLoop = () => {
     if (gameLoopRef.current) {
@@ -227,8 +234,6 @@ const GamePage: React.FC = () => {
   }, [isAIThinking, handleAIMove]);
 
   const handleShotComplete = () => {
-    stopGameLoop();
-
     const engine = physicsEngineRef.current;
     if (!engine) return;
 
@@ -359,10 +364,6 @@ const GamePage: React.FC = () => {
 
       gameState.setPhase('aiming');
       gameState.setCanShoot(true);
-
-      if (!hasFoul || currentPlayer === 'ai') {
-        setTimeout(() => startGameLoop(), 100);
-      }
     }
   };
 

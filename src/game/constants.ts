@@ -13,11 +13,11 @@ export const PLAYFIELD_BOTTOM = TABLE_HEIGHT - CUSHION_WIDTH - POCKET_RADIUS / 2
 export const PLAYFIELD_WIDTH = PLAYFIELD_RIGHT - PLAYFIELD_LEFT;
 export const PLAYFIELD_HEIGHT = PLAYFIELD_BOTTOM - PLAYFIELD_TOP;
 
-export const BALL_RESTITUTION = 0.85;
+export const BALL_RESTITUTION = 0.92;
 export const FRICTION = 0.985;
-export const ANGULAR_DAMPING = 0.8;
-export const MAX_POWER = 20;
-export const MIN_POWER = 2;
+export const ANGULAR_DAMPING = 0.5;
+export const MAX_POWER = 60;
+export const MIN_POWER = 5;
 
 export const POCKETS: Pocket[] = [
   { x: PLAYFIELD_LEFT, y: PLAYFIELD_TOP, radius: POCKET_RADIUS },

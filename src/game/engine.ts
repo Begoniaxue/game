@@ -117,7 +117,7 @@ export class PhysicsEngine {
 
       const body = Matter.Bodies.circle(ball.x, ball.y, BALL_RADIUS, {
         restitution: BALL_RESTITUTION,
-        friction: 0.005,
+        friction: 0.01,
         frictionAir: 0.015,
         label: String(ball.id),
       } as Matter.IBodyDefinition);
@@ -233,7 +233,7 @@ export class PhysicsEngine {
     for (const [, body] of this.bodies) {
       const speed = Math.sqrt(body.velocity.x ** 2 + body.velocity.y ** 2);
       const angularSpeed = Math.abs(body.angularVelocity);
-      if (speed > 0.05 || angularSpeed > 0.02) {
+      if (speed > 0.5 || angularSpeed > 0.3) {
         return false;
       }
     }
