@@ -192,22 +192,23 @@ const GamePage: React.FC = () => {
   const handleAIMove = useCallback(() => {
     if (!physicsEngineRef.current || !aiPlayerRef.current) return;
 
-    gameState.setCanShoot(false);
-    gameState.setPhase('shooting');
-    gameState.setLastFoul('none');
+    const s = useGameStore.getState();
+    s.setCanShoot(false);
+    s.setPhase('shooting');
+    s.setLastFoul('none');
 
-    const aiType = gameState.aiBallType;
-    const canHitBlack = GameRules.canHitBlackEight(gameState, 'ai');
+    const aiType = s.aiBallType;
+    const canHitBlack = GameRules.canHitBlackEight(s, 'ai');
 
     let shot = aiPlayerRef.current.calculateShot(
-      gameState.balls.find(b => b.id === 0 && !b.pocketed)!,
-      gameState.balls,
+      s.balls.find(b => b.id === 0 && !b.pocketed)!,
+      s.balls,
       aiType,
       canHitBlack
     );
 
     if (aiPlayerRef.current.willCommitFoul()) {
-      const validTargets = gameState.balls.filter(b => {
+      const validTargets = s.balls.filter(b => {
         if (b.pocketed || b.type === 'cue') return false;
         if (b.type === 'black') return canHitBlack;
         if (aiType) return b.type === aiType;
@@ -215,7 +216,7 @@ const GamePage: React.FC = () => {
       });
 
       if (validTargets.length > 1) {
-        const wrongTargets = gameState.balls.filter(b => {
+        const wrongTargets = s.balls.filter(b => {
           if (b.pocketed || b.type === 'cue') return false;
           if (b.type === 'black') return !canHitBlack;
           if (aiType) return b.type !== aiType;
@@ -223,7 +224,7 @@ const GamePage: React.FC = () => {
         });
 
         if (wrongTargets.length > 0) {
-          const cueBall = gameState.balls.find(b => b.id === 0)!;
+          const cueBall = s.balls.find(b => b.id === 0)!;
           const wrongTarget = wrongTargets[0];
           shot = {
             angle: Math.atan2(wrongTarget.y - cueBall.y, wrongTarget.x - cueBall.x),
@@ -234,7 +235,7 @@ const GamePage: React.FC = () => {
       }
     }
 
-    gameState.setAimAngle(shot.angle);
+    s.setAimAngle(shot.angle);
     pocketedThisShotRef.current = [];
 
     const aiDelay = 300 + Math.random() * 400;
@@ -242,10 +243,10 @@ const GamePage: React.FC = () => {
       shootAnimStartRef.current = performance.now();
       shootProgressRef.current = 0;
       (window as any).__pendingShoot = { angle: shot.angle, power: shot.power };
-      gameState.setPhase('shooting');
+      useGameStore.getState().setPhase('shooting');
       setIsAIThinking(false);
     }, aiDelay);
-  }, [gameState]);
+  }, []);
 
   const handleAITurn = useCallback(() => {
     if (isAIThinking) return;
@@ -261,51 +262,56 @@ const GamePage: React.FC = () => {
     const engine = physicsEngineRef.current;
     if (!engine) return;
 
-    const state = useGameStore.getState();
+    const s = useGameStore.getState();
     const liveBalls = liveBallsRef.current;
     for (const b of liveBalls) {
-      const storeBall = state.balls.find(sb => sb.id === b.id);
+      const storeBall = s.balls.find(sb => sb.id === b.id);
       if (storeBall) {
         storeBall.x = b.x;
         storeBall.y = b.y;
         storeBall.pocketed = b.pocketed;
       }
     }
-    useGameStore.getState().updateBalls([...state.balls]);
+    s.updateBalls([...s.balls]);
 
     const collisionState = engine.getCollisionState();
     const pocketedThisShot = pocketedThisShotRef.current;
     const cueBallPocketed = pocketedThisShot.some(b => b.id === 0);
     const cueBallOffTable = pocketedThisShot.some(b => b.id === 0 && b.x < 0);
 
+    const curPlayer = s.currentPlayer;
+    const curIsBreakShot = s.isBreakShot;
+    const curPlayerBallType = s.playerBallType;
+    const curAiBallType = s.aiBallType;
+
     const { winner, winReason, loseReason } = GameRules.checkWinLoseConditions(
-      gameState,
-      currentPlayer,
+      s,
+      curPlayer,
       pocketedThisShot,
       cueBallPocketed,
       appSettings.threeFoulRule
     );
 
     if (winner) {
-      gameState.endGame(winner, winReason, loseReason);
+      s.endGame(winner, winReason, loseReason);
       return;
     }
 
-    if (isBreakShot) {
+    if (curIsBreakShot) {
       const blackPocketed = pocketedThisShot.some(b => b.type === 'black');
       if (blackPocketed && !cueBallPocketed) {
-        gameState.endGame('ai', 'opponent_premature_black', 'premature_black');
+        s.endGame('ai', 'opponent_premature_black', 'premature_black');
         return;
       }
 
       const assignment = GameRules.determineBallTypeAssignment(pocketedThisShot, true);
       if (assignment.playerType) {
-        gameState.setBallTypes(assignment.playerType, assignment.aiType);
+        s.setBallTypes(assignment.playerType, assignment.aiType);
       }
     }
 
-    const currentType = currentPlayer === 'player' ? playerBallType : aiBallType;
-    const canHitBlack = currentType ? GameRules.getRemainingBalls(gameState.balls, currentType) === 0 : false;
+    const currentType = curPlayer === 'player' ? curPlayerBallType : curAiBallType;
+    const canHitBlack = currentType ? GameRules.getRemainingBalls(s.balls, currentType) === 0 : false;
 
     let foul: FoulType = 'none';
 
@@ -316,11 +322,11 @@ const GamePage: React.FC = () => {
     } else {
       const firstHitCheck = GameRules.checkFirstHit(
         collisionState.firstHitBallId,
-        gameState.balls,
-        currentPlayer,
-        playerBallType,
-        aiBallType,
-        isBreakShot,
+        s.balls,
+        curPlayer,
+        curPlayerBallType,
+        curAiBallType,
+        curIsBreakShot,
         canHitBlack
       );
 
@@ -330,7 +336,7 @@ const GamePage: React.FC = () => {
         const railCheck = GameRules.checkRailHit(
           collisionState.hasHitCushion,
           pocketedThisShot.filter(b => b.id !== 0).length,
-          isBreakShot
+          curIsBreakShot
         );
 
         if (!railCheck.valid) {
@@ -341,44 +347,45 @@ const GamePage: React.FC = () => {
 
     const hasFoul = foul !== 'none';
     if (hasFoul) {
-      gameState.setLastFoul(foul);
-      gameState.incrementFoulCount(currentPlayer);
-    } else if (currentPlayer === 'player') {
-      gameState.resetConsecutiveFouls();
+      s.setLastFoul(foul);
+      s.incrementFoulCount(curPlayer);
+    } else if (curPlayer === 'player') {
+      s.resetConsecutiveFouls();
     }
 
-    if (hasFoul && currentPlayer === 'player' && cueBallPocketed) {
+    if (hasFoul && curPlayer === 'player' && cueBallPocketed) {
       handleCueBallPocketed();
-    } else if (hasFoul && currentPlayer === 'player' && cueBallOffTable) {
+    } else if (hasFoul && curPlayer === 'player' && cueBallOffTable) {
       handleCueBallPocketed();
     } else {
       const validPocketed = pocketedThisShot.filter(b => {
         if (b.id === 0) return false;
-        const type = currentPlayer === 'player' ? playerBallType : aiBallType;
+        const type = curPlayer === 'player' ? curPlayerBallType : curAiBallType;
         return type ? b.type === type : (b.type === 'solid' || b.type === 'striped');
       });
 
-      const ballTypeAssigned = playerBallType !== null || aiBallType !== null;
+      const ballTypeAssigned = curPlayerBallType !== null || curAiBallType !== null;
       const shouldSwitch = GameRules.shouldSwitchPlayer(
         validPocketed,
         hasFoul,
-        isBreakShot,
+        curIsBreakShot,
         ballTypeAssigned
       );
 
-      gameState.updateRemainingBalls();
+      s.updateRemainingBalls();
 
       if (shouldSwitch) {
-        const nextPlayer: PlayerType = currentPlayer === 'player' ? 'ai' : 'player';
-        gameState.setCurrentPlayer(nextPlayer);
+        const nextPlayer: PlayerType = curPlayer === 'player' ? 'ai' : 'player';
+        s.setCurrentPlayer(nextPlayer);
 
         if (hasFoul) {
-          gameState.setBallInHand(true);
+          s.setBallInHand(true);
           if (nextPlayer === 'player') {
             handleCueBallPocketed();
           } else {
             setTimeout(() => {
-              const cueBall = gameState.balls.find(b => b.id === 0);
+              const latest = useGameStore.getState();
+              const cueBall = latest.balls.find(b => b.id === 0);
               if (cueBall && physicsEngineRef.current) {
                 const newX = PLAYFIELD_LEFT + PLAYFIELD_WIDTH * 0.25;
                 const newY = PLAYFIELD_TOP + 200;
@@ -392,25 +399,26 @@ const GamePage: React.FC = () => {
                   liveCue.y = newY;
                   liveCue.pocketed = false;
                 }
-                gameState.updateBalls([...gameState.balls]);
-                gameState.setBallInHand(false);
+                latest.updateBalls([...latest.balls]);
+                latest.setBallInHand(false);
               }
             }, 500);
           }
         }
       }
 
-      if (isBreakShot) {
-        gameState.setIsBreakShot(false);
+      if (curIsBreakShot) {
+        s.setIsBreakShot(false);
       }
 
-      gameState.setPhase('aiming');
-      gameState.setCanShoot(true);
+      s.setPhase('aiming');
+      s.setCanShoot(true);
     }
   };
 
   const handleCueBallPocketed = () => {
-    const cueBall = gameState.balls.find(b => b.id === 0);
+    const s = useGameStore.getState();
+    const cueBall = s.balls.find(b => b.id === 0);
     if (!cueBall) return;
 
     cueBall.pocketed = false;
@@ -430,8 +438,8 @@ const GamePage: React.FC = () => {
       physicsEngineRef.current.setCueBallPosition(newX, newY);
     }
 
-    gameState.updateBalls([...gameState.balls]);
-    gameState.setBallInHand(true);
+    s.updateBalls([...s.balls]);
+    s.setBallInHand(true);
     setIsPlacing(true);
     placementPosRef.current = { x: newX, y: newY, valid: true };
   };

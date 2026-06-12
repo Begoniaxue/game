@@ -1,19 +1,23 @@
 @use '@/styles/variables.scss' as *;
 
 .container {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   padding: $page-padding;
-  padding-bottom: $page-padding;
+  padding-bottom: calc(#{$page-padding} + env(safe-area-inset-bottom));
   background: $color-bg-page;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .gameContent {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  overflow: hidden;
 }
 
 .exitConfirm {
