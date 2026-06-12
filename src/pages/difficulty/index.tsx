@@ -33,6 +33,7 @@ const difficulties = [
 const DifficultyPage: React.FC = () => {
   const [selected, setSelected] = useState<DifficultyLevel>('normal');
   const setDifficulty = useGameStore(state => state.setDifficulty);
+  const resetGame = useGameStore(state => state.resetGame);
 
   const handleSelect = (key: DifficultyLevel) => {
     setSelected(key);
@@ -40,6 +41,7 @@ const DifficultyPage: React.FC = () => {
   };
 
   const handleStart = () => {
+    resetGame();
     Taro.navigateTo({ url: '/pages/game/index' });
   };
 

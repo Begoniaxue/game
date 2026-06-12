@@ -33,6 +33,9 @@ const GamePage: React.FC = () => {
   const pocketedThisShotRef = useRef<Ball[]>([]);
   const aiTurnTimeoutRef = useRef<number | null>(null);
   const aiMoveTimeoutRef = useRef<number | null>(null);
+  const initTimeoutRef = useRef<number | null>(null);
+  const initializedRef = useRef(false);
+  const gameEndTriggeredRef = useRef(false);
 
   const clearAITimeouts = () => {
     if (aiTurnTimeoutRef.current !== null) {
@@ -67,7 +70,11 @@ const GamePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (phase === 'ended' && gameState.winner !== null) {
+    if (!initializedRef.current) return;
+    if (gameEndTriggeredRef.current) return;
+    const state = useGameStore.getState();
+    if (state.phase === 'ended' && state.winner !== null) {
+      gameEndTriggeredRef.current = true;
       handleGameEnd();
     }
   }, [phase, gameState.winner]);
@@ -99,21 +106,29 @@ const GamePage: React.FC = () => {
 
   const initGame = () => {
     gameState.initGame();
+    initializedRef.current = true;
     
-    setTimeout(() => {
+    initTimeoutRef.current = setTimeout(() => {
+      initTimeoutRef.current = null;
       const storeBalls = useGameStore.getState().balls;
       liveBallsRef.current = storeBalls.map(b => ({ ...b }));
       physicsEngineRef.current = new PhysicsEngine();
       physicsEngineRef.current.initBalls(storeBalls);
       aiPlayerRef.current = new AIPlayer(useGameStore.getState().difficulty);
       startGameLoop();
-    }, 100);
+    }, 100) as unknown as number;
   };
 
   const cleanup = () => {
     stopGameLoop();
     clearAITimeouts();
+    if (initTimeoutRef.current !== null) {
+      clearTimeout(initTimeoutRef.current);
+      initTimeoutRef.current = null;
+    }
     setIsAIThinking(false);
+    initializedRef.current = false;
+    gameEndTriggeredRef.current = false;
     if (physicsEngineRef.current) {
       physicsEngineRef.current.clear();
       physicsEngineRef.current = null;
@@ -543,24 +558,27 @@ const GamePage: React.FC = () => {
     stopGameLoop();
     cleanup();
 
+    const state = useGameStore.getState();
     const record = {
       id: storage.generateRecordId(),
       date: Date.now(),
-      duration: Math.floor((gameState.gameEndTime - gameState.gameStartTime) / 1000),
-      difficulty: gameState.difficulty,
-      winner: gameState.winner!,
-      playerFouls: gameState.playerFoulCount,
-      aiFouls: gameState.aiFoulCount,
-      winReason: gameState.winReason || undefined,
-      loseReason: gameState.loseReason || undefined,
-      playerBallType: gameState.playerBallType || undefined,
-      aiBallType: gameState.aiBallType || undefined,
+      duration: Math.floor((state.gameEndTime - state.gameStartTime) / 1000),
+      difficulty: state.difficulty,
+      winner: state.winner!,
+      playerFouls: state.playerFoulCount,
+      aiFouls: state.aiFoulCount,
+      winReason: state.winReason || undefined,
+      loseReason: state.loseReason || undefined,
+      playerBallType: state.playerBallType || undefined,
+      aiBallType: state.aiBallType || undefined,
     };
 
     await storage.saveRecord(record);
 
+    if (!gameEndTriggeredRef.current) return;
+
     Taro.redirectTo({
-      url: `/pages/result/index?winner=${gameState.winner}&duration=${record.duration}&playerFouls=${gameState.playerFoulCount}&aiFouls=${gameState.aiFoulCount}&winReason=${gameState.winReason || ''}&loseReason=${gameState.loseReason || ''}&difficulty=${gameState.difficulty}`,
+      url: `/pages/result/index?winner=${state.winner}&duration=${record.duration}&playerFouls=${state.playerFoulCount}&aiFouls=${state.aiFoulCount}&winReason=${state.winReason || ''}&loseReason=${state.loseReason || ''}&difficulty=${state.difficulty}`,
     });
   };
 
