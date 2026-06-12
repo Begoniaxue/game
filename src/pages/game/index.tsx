@@ -31,6 +31,19 @@ const GamePage: React.FC = () => {
     showAimGuide: true,
   });
   const pocketedThisShotRef = useRef<Ball[]>([]);
+  const aiTurnTimeoutRef = useRef<number | null>(null);
+  const aiMoveTimeoutRef = useRef<number | null>(null);
+
+  const clearAITimeouts = () => {
+    if (aiTurnTimeoutRef.current !== null) {
+      clearTimeout(aiTurnTimeoutRef.current);
+      aiTurnTimeoutRef.current = null;
+    }
+    if (aiMoveTimeoutRef.current !== null) {
+      clearTimeout(aiMoveTimeoutRef.current);
+      aiMoveTimeoutRef.current = null;
+    }
+  };
 
   const {
     balls,
@@ -99,6 +112,8 @@ const GamePage: React.FC = () => {
 
   const cleanup = () => {
     stopGameLoop();
+    clearAITimeouts();
+    setIsAIThinking(false);
     if (physicsEngineRef.current) {
       physicsEngineRef.current.clear();
       physicsEngineRef.current = null;
@@ -120,17 +135,22 @@ const GamePage: React.FC = () => {
       const currentPhase = latestState.phase;
 
       if (currentPhase === 'shooting') {
+        const pending = (window as any).__pendingShoot;
+        if (!pending) {
+          shootProgressRef.current = 1;
+          gameLoopRef.current = requestAnimationFrame(loop);
+          return;
+        }
         const now = performance.now();
         const elapsed = now - shootAnimStartRef.current;
         const progress = Math.min(1, elapsed / SHOOT_ANIM_DURATION);
         shootProgressRef.current = progress;
 
         if (progress >= 1) {
-          const pending = (window as any).__pendingShoot;
-          if (pending && physicsEngineRef.current) {
+          if (physicsEngineRef.current) {
             physicsEngineRef.current.shoot(pending.angle, pending.power);
-            (window as any).__pendingShoot = null;
           }
+          (window as any).__pendingShoot = null;
           useGameStore.getState().setPhase('moving');
         }
       } else if (currentPhase === 'moving') {
@@ -194,7 +214,6 @@ const GamePage: React.FC = () => {
 
     const s = useGameStore.getState();
     s.setCanShoot(false);
-    s.setPhase('shooting');
     s.setLastFoul('none');
 
     const aiType = s.aiBallType;
@@ -239,23 +258,35 @@ const GamePage: React.FC = () => {
     pocketedThisShotRef.current = [];
 
     const aiDelay = 300 + Math.random() * 400;
-    setTimeout(() => {
+    aiMoveTimeoutRef.current = setTimeout(() => {
+      aiMoveTimeoutRef.current = null;
+      const latest = useGameStore.getState();
+      if (latest.currentPlayer !== 'ai') {
+        setIsAIThinking(false);
+        return;
+      }
       shootAnimStartRef.current = performance.now();
       shootProgressRef.current = 0;
       (window as any).__pendingShoot = { angle: shot.angle, power: shot.power };
-      useGameStore.getState().setPhase('shooting');
+      latest.setPhase('shooting');
       setIsAIThinking(false);
-    }, aiDelay);
+    }, aiDelay) as unknown as number;
   }, []);
 
   const handleAITurn = useCallback(() => {
     if (isAIThinking) return;
+    clearAITimeouts();
     setIsAIThinking(true);
 
     const delay = 800 + Math.random() * 1000;
-    setTimeout(() => {
+    aiTurnTimeoutRef.current = setTimeout(() => {
+      aiTurnTimeoutRef.current = null;
+      if (useGameStore.getState().currentPlayer !== 'ai') {
+        setIsAIThinking(false);
+        return;
+      }
       handleAIMove();
-    }, delay);
+    }, delay) as unknown as number;
   }, [isAIThinking, handleAIMove]);
 
   const handleShotComplete = () => {
@@ -377,6 +408,10 @@ const GamePage: React.FC = () => {
       if (shouldSwitch) {
         const nextPlayer: PlayerType = curPlayer === 'player' ? 'ai' : 'player';
         s.setCurrentPlayer(nextPlayer);
+        clearAITimeouts();
+        if (nextPlayer === 'player') {
+          setIsAIThinking(false);
+        }
 
         if (hasFoul) {
           s.setBallInHand(true);
