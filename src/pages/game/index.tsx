@@ -65,6 +65,7 @@ const GamePage: React.FC = () => {
     initGame();
     loadSettings();
     return () => {
+      gameEndTriggeredRef.current = false;
       cleanup();
     };
   }, []);
@@ -107,6 +108,7 @@ const GamePage: React.FC = () => {
   const initGame = () => {
     gameState.initGame();
     initializedRef.current = true;
+    gameEndTriggeredRef.current = false;
     
     initTimeoutRef.current = setTimeout(() => {
       initTimeoutRef.current = null;
@@ -128,7 +130,6 @@ const GamePage: React.FC = () => {
     }
     setIsAIThinking(false);
     initializedRef.current = false;
-    gameEndTriggeredRef.current = false;
     if (physicsEngineRef.current) {
       physicsEngineRef.current.clear();
       physicsEngineRef.current = null;
